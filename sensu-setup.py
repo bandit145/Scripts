@@ -1,11 +1,9 @@
+#Note: This is to be launched from an ansible deployment playbook 
 #TODO: when deploying we need another script the uses scp to copy the keys to clients
 #TODO: install redis,sensu,rabbitmq,uchiwa start and enable at end of script
 #can add checks and stuff later if needed
 #sensu server configuration for ansible to run against server
 import subprocess as sp
-def email:
-
-
 
 #install rabbimq and redis from ansible
 #might have to pull these two into a second script    
