@@ -14,6 +14,7 @@ sp.call(['echo "deb     http://sensu.global.ssl.fastly.net/apt sensu main" | tee
 sp.call(["mkdir /home/server/ssl"], shell = True)
 sp.call(["cd /home/server/ssl && wget http://sensuapp.org/docs/0.25/files/sensu_ssl_tool.tar && tar -xvf sensu_ssl_tool.tar"], shell = True)
 sp.call(["cd /home/server/ssl/sensu_ssl_tool $$ ./ssl_certs.sh generat"], shell = True)
+sp.call(["mkdir /etc/sensu"], shell = True)
 sp.call(["mkdir /etc/sensu/ssl"], shell = True)
 sp.call(["cp /home/server/ssl/sensu_ssl_tool/client /home/server/ssl/sensu_ssl_tool/sensu_ca /home/server/ssl/sensu_ssl_tool/server /etc/sensu/ssl"], shell = True)
 sp.call(["cp /home/server/sensu_ssl_tool/sensu_ca/cacert.pem /home/server/sensu_ssl_tool/server/cert.pem /home/server/sensu_ssl_tool/server/key.pem /etc/rabbitmq/ssl"], shell = True)
