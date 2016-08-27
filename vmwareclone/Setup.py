@@ -24,6 +24,7 @@ class clone:
 		clonedrive+=str(number)
 		stdin, stdout, stderr = self.client.exec_command('vmkfstools -i /vmfs/volumes/datastore1/'+self.vmname+'/'+self.vmname+'-000001.vmdk /vmfs/volumes/datastore1/Clone/'+clonedrive+'.vmdk -d thin')
 		print(stdout.readlines())
+		print(stderr.readlines())
 	
 	def check_other_clones(self):
 		stdin, stdout, stder = self.client.exec_command('cd /vmfs/volumes/datastor1 && ls')
