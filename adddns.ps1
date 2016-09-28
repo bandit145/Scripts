@@ -9,10 +9,11 @@ param (	[Parameter(Mandatory=$True)]
 $session = New-PSSession -ComputerName dc1 -Credential meme\$admin
 try{
 	Invoke-Command -Session $session -ScriptBlock {
+		param($computername,$ipaddress)
 		Get-DhcpServerv4Lease -IPAddress $ipaddress -ComputerName dc1.meme.com | Add-DhcpServerv4Reservation
 		Add-DnsServerResourceRecordA -zonename meme.com -name $computername -ipv4address $ipaddress
 		Exit-PSSession
-		}
+		} -ArgumentList $computername, $ipaddress
 }
 catch{
 	Write-Host "Some of your Information is incorrect"
