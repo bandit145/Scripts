@@ -1,4 +1,7 @@
-$files = Get-ChildItem userprofiles
+#Written by Philip Bove
+#9/28/2016
+#
+$files = Get-ChildItem userprofiles #Put path to folder you would like to run against
 $date = Get-Date
 $date = $date.AddDays(-10)
 foreach($file in $files){
