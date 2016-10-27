@@ -1,4 +1,4 @@
-#!/usr/bim/env powershell
+#!/usr/bin/env powershell
 param(
     [parameter(Mandatory=$true)]
     [string]$server,
@@ -10,28 +10,25 @@ param(
     )
 $ram = New-Object System.Collections.ArrayList 
 $vmhost = @{}
-Import-Module VMWare.VimAutomation.Core
+Import-Module VMWare.VimAutomation.Core -ErrorAction "SilentlyContinue"
+Import-Module PowerCLI.ViCore -ErrorAction "SilentlyContinue"
 $credential = Get-Credential
 Connect-VIServer -Server $server -Credential $credential
 $hosts = Get-VMHost
-
+#make vmhost hash correspond to opem memeory and add open memeory to its own list
 foreach($box in $hosts){
     $sub = $box.MemoryTotalGB - $box.MemoryUsageGB
     $vmhost.Add($sub, $box.Name)
     $ram.Add($sub)
 }
-$ram = $ram | Sort-Object -Descending
-
+$ram = $ram | Sort-Object -Descending #sort memory open from largest amount to smallest amount
+#loop through ram arraylist and try to deploy to hosts
 foreach($num in $ram){
-    try{
-        New-VM -VMHost $vmhost.$num -Template $template -Name $vmname | Wait-Task
-        Start-VM -VM $vmname
-        Write-Host $vmname created on $vmhost.$num
+    New-VM -VMHost $vmhost.$num -Template $template -Name $vmname -ErrorAction "SilentlyContinue" | Wait-Task
+    Start-VM -VM $vmname -ErrorAction "SilentlyContinue"
+    Start-Sleep -s 20
+    if($data = Get-VMGuest -VM $vmname -ErrorAction "SilentlyContinue"){
+        Write-Host $vmname ip address is $data.IPAddress
         exit
-
     }
-    catch [VMware.VimAutomation.ViCore.Types.V1.ErrorHandling.NoDiskSpace]{
-        continue
-    }
-
 }
