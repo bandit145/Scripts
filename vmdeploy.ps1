@@ -5,7 +5,9 @@ param(
     [parameter(Mandatory=$true)]
     [string]$template,
     [parameter(Mandatory=$true)]
-    [string]$vmname
+    [string]$vmname,
+    [int]$memGB = 4, #base vm ram and disk sizes if none given
+    [int]$storageGB = 40
 
     )
 $ram = New-Object System.Collections.ArrayList 
@@ -15,7 +17,7 @@ Import-Module PowerCLI.ViCore -ErrorAction "SilentlyContinue"
 $credential = Get-Credential
 Connect-VIServer -Server $server -Credential $credential
 $hosts = Get-VMHost
-#make vmhost hash correspond to opem memeory and add open memeory to its own list
+#make vmhost hash table correspond to open memeory and add open memeory to its own list
 foreach($box in $hosts){
     $sub = $box.MemoryTotalGB - $box.MemoryUsageGB
     $vmhost.Add($sub, $box.Name)
@@ -24,9 +26,9 @@ foreach($box in $hosts){
 $ram = $ram | Sort-Object -Descending #sort memory open from largest amount to smallest amount
 #loop through ram arraylist and try to deploy to hosts
 foreach($num in $ram){
-    New-VM -VMHost $vmhost.$num -Template $template -Name $vmname -ErrorAction "SilentlyContinue" | Wait-Task
+    New-VM -VMHost $vmhost.$num -Template $template -Name $vmname -DiskGB $storageGB -MemoryGB $memGB -ErrorAction "SilentlyContinue" | Wait-Task
     Start-VM -VM $vmname -ErrorAction "SilentlyContinue"
-    Start-Sleep -s 20
+    Start-Sleep -s 30
     if($data = Get-VMGuest -VM $vmname -ErrorAction "SilentlyContinue"){
         Write-Host $vmname ip address is $data.IPAddress
         exit
