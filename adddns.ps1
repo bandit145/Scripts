@@ -6,7 +6,6 @@ param (	[Parameter(Mandatory=$True)]
 		[string]$ipaddress,
 		[Parameter(Mandatory=$True)]
 		[string]$computername)
-$session = New-PSSession -ComputerName dc1 -Credential meme\$admin
 try{
 	Invoke-Command -Session $session -ScriptBlock {
 		param($computername,$ipaddress)
