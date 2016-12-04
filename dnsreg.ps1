@@ -12,7 +12,7 @@ foreach($existing_server in $existing_servers){
 }
 
 foreach($name in $data.name){
-	if ($name -NotIn $Newinv){
+	if ($name -NotIn $Newinv){t
 		$Newinv.Add($name)
 		$address = Invoke-RestMethod -Method GET -uri http://sensu.meme.com:4567/clients/$name
 		Get-DhcpServerv4Lease -IPAddress $address.address -ComputerName $dhcpserver | Add-DhcpServerv4Reservation -ComputerName $dhcpserver
