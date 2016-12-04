@@ -27,8 +27,6 @@ foreach($box in $hosts){
     $hostinfo.Add($box.name,@{cpuper = $cpuper; ramper = $ramper})
 }
 $hostname = $hostname | Sort-Object -Property Value -Descending #sort hostname hash table by lowest load avg first
-$hostname
-
 #loop through ram arraylist and try to deploy to hosts
 foreach($vmhost in $hostname.Keys){
     if($hostinfo.$vmhost.cpuper -lt .80 -Or $hostinfo.$vmhost.ramper -lt .75){ 
