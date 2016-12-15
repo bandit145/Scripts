@@ -1,3 +1,4 @@
+#test
 Function New-DomainController{
     param(
         [ValidateSet($true,$false)]
