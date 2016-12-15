@@ -21,7 +21,7 @@ foreach($box in $hosts){
     $ramper = $box.MemoryUsageGB / $box.MemoryTotalGB
     $cpuper = $box.CpuUsageMhz / $box.CpuTotalMhz
     $loadavg = ($ramper + $cpuper) / 2
-    #hostname = {hostname = $loadavg}
+    #hostname = @{hostname = $loadavg}
     $hostname.Add($box.name,$loadavg)
     #hostinfo = {hostname = @{cpuper = .50; ramper = .40}; etc.}
     $hostinfo.Add($box.name,@{cpuper = $cpuper; ramper = $ramper})
