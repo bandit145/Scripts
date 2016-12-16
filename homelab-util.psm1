@@ -1,5 +1,3 @@
-#Hi! I am a merge conflict, I happen if a file is edited locally and a git pull #is done and there is new data in the file
-#
 Function New-DomainController{
     param(
         [ValidateSet($true,$false)]
