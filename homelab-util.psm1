@@ -2,15 +2,19 @@ Function New-DomainController{
     param(
         [ValidateSet($true,$false)]
         [bool]$Dns = $false,
-        [parameter(Mandatory=$true)]
-        [pscredential]$Credential,
+        [pscredential]$Credential = $Null,
         [parameter(Mandatory=$true)]
         [string]$Domain,
         [parameter(Mandatory=$true)]
         [string]$ComputerName
         )
-
-    $session = New-Pssession -ComputerName $ComputerName -Credential $Credential
+    $ErrorActionPreference = "Stop"
+    if($Credential -eq $Null){
+        $session = New-Pssession -ComputerName $ComputerName
+    }
+    else{
+        $session = New-Pssession -ComputerName $ComputerName -Credential $Credential    
+    }
     Invoke-Command -Session $session -Args $Dns, $Domain, $Credential -ScriptBlock{
         param($Dns, $Domain, $Credential)
         Install-WindowsFeature -Name "AD-Domain-Services"
@@ -23,12 +27,17 @@ Function New-DomainController{
 }
 Function Set-StaticIp{
     param(
-        [parameter(Mandatory=$true)]
         [pscredential]$Credential,
         [parameter(Mandatory=$true)]
         [string]$ComputerName
         )
-    $session = New-Pssession -ComputerName $ComputerName -Credential $Credential
+    $ErrorActionPreference = "Stop"
+    if($Credential -eq $Null){
+        $session = New-Pssession -ComputerName $ComputerName
+    }
+    else{
+        $session = New-Pssession -ComputerName $ComputerName -Credential $Credential   
+    }
     Invoke-Command -Session $session -ScriptBlock{
         $addressfamily = "IPv4"
         $alias = "Ethernet0"
@@ -54,13 +63,15 @@ Function Set-StaticIp{
 }
 
  #grab thumbprint of self signed cert for credssp
-function Get-CredSspCert{
-    param( [String[]]$Computer = $Null,
-            [parameter(Mandatory=$true)]
-            [PSCredential]$Credential
+Function Get-CredSspCert{
+    param(
+          [parameter(Mandatory=$true)]
+          [String[]]$Computer,
+          [PSCredential]$Credential
         )
+    $ErrorActionPreference = "Stop"
     foreach($comp in $Computer){
-        if($Credential = $Null){
+        if($Credential -eq $Null){
             $session = New-Pssession -ComputerName $comp
             Invoke-Command -Session $session -ScriptBlock {
                 $creds = Get-ChildItem "Cert:\LocalMachine\Remote Desktop\"
@@ -68,7 +79,7 @@ function Get-CredSspCert{
             } 
         }
         else{
-            $session = New-Pssession -ComputerName $comp -Credential
+            $session = New-Pssession -ComputerName $comp -Credential $Credential
             Invoke-Command -Session $session -ScriptBlock{
                 $creds = Get-ChildItem "Cert:\LocalMachine\Remote Desktop\"
                 Write-Host $creds
