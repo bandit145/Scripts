@@ -2,7 +2,7 @@ Function New-DomainController{
     param(
         [ValidateSet($true,$false)]
         [bool]$Dns = $false,
-        [pscredential]$Credential = $Null,
+        [pscredential]$Credential,
         [parameter(Mandatory=$true)]
         [string]$Domain,
         [parameter(Mandatory=$true)]
