@@ -1,3 +1,23 @@
+Function Get-Login{
+    param(
+    [pscredential]$Credential,
+    [parameter(Mandatory=$true)]
+    [string]$Computer,
+    [string]$Authentication
+    )
+    if($Credential -eq $Null){
+        $session = New-Pssession -ComputerName $Computer
+    }
+    elseif($Authentication -eq "CredSSP"){
+        $session = New-Pssession -ComputerName $Computer -Credential $Credential -Authentication "CredSSP"
+    }
+    else{
+        $session = New-Pssession -ComputerName $Computer -Credential $Credential
+    }
+    return $session
+}
+
+
 Function New-DomainController{
     param(
         [ValidateSet($true,$false)]
@@ -9,12 +29,7 @@ Function New-DomainController{
         [string]$ComputerName
         )
     $ErrorActionPreference = "Stop"
-    if($Credential -eq $Null){
-        $session = New-Pssession -ComputerName $ComputerName
-    }
-    else{
-        $session = New-Pssession -ComputerName $ComputerName -Credential $Credential    
-    }
+    $session = Get-Login -Credential $Credential -Computer $ComputerName
     Invoke-Command -Session $session -Args $Dns, $Domain, $Credential -ScriptBlock{
         param($Dns, $Domain, $Credential)
         Install-WindowsFeature -Name "AD-Domain-Services"
@@ -32,12 +47,7 @@ Function Set-StaticIp{
         [string]$ComputerName
         )
     $ErrorActionPreference = "Stop"
-    if($Credential -eq $Null){
-        $session = New-Pssession -ComputerName $ComputerName
-    }
-    else{
-        $session = New-Pssession -ComputerName $ComputerName -Credential $Credential   
-    }
+   $session = Get-Login -Credential $Credential -Computer $ComputerName
     Invoke-Command -Session $session -ScriptBlock{
         $addressfamily = "IPv4"
         $alias = "Ethernet0"
@@ -86,4 +96,40 @@ Function Get-CredSspCert{
             }
         }
     }
+}
+
+Function New-LdapsCertReq{
+    param(
+    [parameter(Mandatory=$true)]
+    [String]$Computer,
+    [PSCredential]$Credential)
+    $ErrorActionPreference = "Stop"
+    $session = Get-Login -Credential $Credential -Computer $Computer -Authentication "CredSSP"
+    Invoke-Command -Session $session -ScriptBlock {
+        $certdest = "C:\pending-request\"+$fqdn+".csr"
+        $fqdn = "$env:computername.$env:userdnsdomain"
+        $request = Get-Content C:\requests\request.inf 
+        $request = $request.Replace('Subject = ""','Subject = "CN='+$fqdn+'"')
+        $request | OutFile "C:\requests\"+$fqdn+".inf"  
+        certreq -new "C:\requests\dcrequest.inf" $certdest
+        Exit-PSsession
+     }
+}
+
+Function Set-LdapsCert{
+    param(
+        [parameter(Mandatory=$true)]
+        [String]$Computer,
+        [pscredential]$Credential,
+        [parameter(Mandatory=$true)]
+        [String]$Cert)
+    $ErrorActionPreference = "Stop"
+    $session = Get-Login -Credential $Credential -Computer $Computer -Authentication "CredSSP"
+    Copy-Item -Path $Cert -Destination \\$Computer\"pending-request"\
+    Invoke-Command -Session $session -ScriptBlock {
+       $fqdn = "$env:computername.$env:userdnsdomain"
+        certreq -accept "C:\pending-request\"+$fqdn+".crt"
+        Exit-PSsession
+    }
+
 }
