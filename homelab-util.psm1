@@ -104,15 +104,16 @@ Function New-LdapsCertReq{
     [String]$Computer,
     [PSCredential]$Credential)
     $ErrorActionPreference = "Stop"
-    $session = Get-Login -Credential $Credential -Computer $Computer -Authentication "CredSSP"
+    $session = Get-Login -Credential $Credential -Computer $Computer
     Invoke-Command -Session $session -ScriptBlock {
-        $certdest = "C:\pending-request\"+$fqdn+".csr"
         $fqdn = "$env:computername.$env:userdnsdomain"
-        $request = Get-Content C:\requests\request.inf 
+        $certdest = "C:\pending-request\"+$fqdn+".csr"
+        $request = Get-Content "C:\requests\dcrequest.inf" 
         $request = $request.Replace('Subject = ""','Subject = "CN='+$fqdn+'"')
-        $request | OutFile "C:\requests\"+$fqdn+".inf"  
-        certreq -new "C:\requests\dcrequest.inf" $certdest
-        Exit-PSsession
+        $out = "C:\requests\"+$fqdn+".inf"
+        $request | Out-File $out
+        $cmd = -join("certreq -q -new C:\requests\"+$fqdn+".inf ",$certdest)
+        Invoke-Expression -Command $cmd
      }
 }
 
@@ -120,16 +121,16 @@ Function Set-LdapsCert{
     param(
         [parameter(Mandatory=$true)]
         [String]$Computer,
-        [pscredential]$Credential,
-        [parameter(Mandatory=$true)]
-        [String]$Cert)
+        [pscredential]$Credential
+        )
     $ErrorActionPreference = "Stop"
-    $session = Get-Login -Credential $Credential -Computer $Computer -Authentication "CredSSP"
-    Copy-Item -Path $Cert -Destination \\$Computer\"pending-request"\
+    $session = Get-Login -Credential $Credential -Computer $Computer
     Invoke-Command -Session $session -ScriptBlock {
-       $fqdn = "$env:computername.$env:userdnsdomain"
-        certreq -accept "C:\pending-request\"+$fqdn+".crt"
-        Exit-PSsession
+        $fqdn = "$env:computername.$env:userdnsdomain"
+        $crtloc = "C:\pending-request\"+$fqdn+".crt"
+        $cmd = -join("certreq -q -accept ",$crtloc)
+        Invoke-Expression -Command $cmd
+        Restart-Computer
     }
 
 }
