@@ -39,6 +39,9 @@ else{
 }
 $arg = @($Path, $ShareName, $Users) 
 Invoke-Command -Session $session -ArgumentList $arg  -ScriptBlock {
+    $Path = $args[0]
+    $ShareName = $args[1]
+    $Users = $args[2]
     $ErrorActionPreference = "Stop"
     if(!(Test-Path $Path)){
         New-Item $Path -Type "Directory"
@@ -50,6 +53,6 @@ Invoke-Command -Session $session -ArgumentList $arg  -ScriptBlock {
         Set-Acl -Path $path -AclObject $acl
     }
     if(!((Get-SmbShare) -like "*$ShareName*")){
-        New-SmbShare -Name $ShareName -Path $Path -Fullcontrol "Everyone"
+        New-SmbShare -Name $ShareName -Path $Path -FullAccess "Everyone"
     }
 }
