@@ -39,9 +39,7 @@ else{
 }
 $arg = @($Path, $ShareName, $Users) 
 Invoke-Command -Session $session -ArgumentList $arg  -ScriptBlock {
-    $Path = $args[0]
-    $ShareName = $args[1]
-    $Users = $args[2]
+    $Path, $ShareName, $Users = $args
     $ErrorActionPreference = "Stop"
     if(!(Test-Path $Path)){
         New-Item $Path -Type "Directory"
