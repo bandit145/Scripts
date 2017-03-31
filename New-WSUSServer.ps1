@@ -3,6 +3,7 @@ param(
     [String]$Computer,
     [String]$Credential = "none",
     [String]$SQLServer = "no",
+    [parameter(Mandatory=$true)]
     [String]$ContentDir,
     [String]$UpstreamWSUS = "no",
     [String[]]$UpdateLanguages= @("en")
