@@ -150,14 +150,17 @@ Function Add-WinServer{
         [String]$Credential,
         [String]$Domain = "ncc.commnet.edu",
         [parameter(Mandatory=$true)]
-        [String]$OU
+        [String]$OU,
+        [parameter(Mandatory=$true)]
+        [PSCredential]$DomainJoinCred
         )
     $ErrorActionPreference = "Stop"
-    $session = Check-Creds -Credential $Credential
+    $session = Check-Creds -Credential $Credential -Computer $Computer
 
-    Invoke-Command -Session $session -Args $HostName, $Computer -ScriptBlock{
-        param([String]$HostName, [String]$Computer)
-        Add-Computer -Domain $Domain -New-Name $HostName
+    Invoke-Command -Session $session -Args $HostName, $Computer, $DomainJoinCred, $OU -ScriptBlock{
+        param([String]$HostName, [PSCredential]$DomainJoinCred, [String]$OU)
+        Add-Computer -Domain $Domain -New-Name $HostName -Credential $DomainJoinCred -OUPath $OU -Restart
+
     }
 
 }
@@ -172,7 +175,6 @@ Function New-WindowsServer{
         [String]$Server
         )
     $ErrorActionPreference = "Stop"
-    #ipv4 regex
     Import-Module VMWare.VimAutomation.Core
     New-VM -Name $Name -Template $Template
     Write-Host "Deploying VM:"
@@ -181,9 +183,14 @@ Function New-WindowsServer{
         Start-Sleep -Seconds 5
     }
     until(Get-VMGuest -VM $Name)
+    do{
+        $data = (Get-VMGuest -VM $Name).IPAddress
+        #ipv4 regex
+        $ipaddr = Select-String -Pattern "/d{1-3}./d{1-3}./d{1-3}./d{1-3}" -Path (Get-VMGuest -VM $Name).IPAddress | Select-Matches
+    }
+    until($ipaddr -match "/d{1-3}./d{1-3}./d{1-3}./d{1-3}")
     Write-Host "Deployed VM $Name"
     Write-Host "IPv4 Address is: "
-    $ipaddr = Select-String -Pattern "/d{1-3}./d{1-3}./d{1-3}./d{1-3}" -Path (Get-VMGuest -VM $Name).IPAddress | Select-Matches
     return $ipaddr
 }
 
