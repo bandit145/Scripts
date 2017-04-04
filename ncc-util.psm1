@@ -1,8 +1,12 @@
 #Configure configmgr intergration
 Function Check-Creds{
-    param([String]$Credential, [String]$Computer)
+    param([String]$Credential, [String]$Computer, [bool]$CredSSP)
     if($Credential -eq "none"){
         $session = New-PSSession -ComputerName $Computer
+    }
+    elseif($CredSSP){
+        $creds = Get-Credential -UserName $Credential -Message "Enter Credentials"
+        $session = New-PSSession -ComputerName $Computer -Credential $creds -Authentication "CredSSP" 
     }
     else{
         $creds = Get-Credential -UserName $Credential -Message "Enter Credentials"
@@ -86,26 +90,25 @@ Function New-SCCMCfgServer{
         [parameter(Mandatory=$true)]
         [String]$UnattendedFile,
         [parameter(Mandatory=$true)]
-        [String]$InstallerLocation
+        [String]$SCCMLocation,
+        [parameter(Mandatory=$true)]
+        [String]$ADKLocation,
+        [parameter(Mandatory=$true)]
+        [String]$DotNetLocation
         )
 
     $ErrorActionPreference= "Stop"
-    $infolderlocation = "/SMSSETUP/BIN/X64/"
-    $file = Get-Content $UnattendedFile
-    $session = Check-Creds -Credential $Credential -Computer $Computer
-    Invoke-Command -Session $session -Args $file, $InstallerLocation ,$infolderlocation-Scriptblock{
-        param([String]$file,[String]$InstallerLocation, [String]$infolderlocation)
-        $file | Out-File C:\UnattendedFile.ini
-        Write-Host "Running pre-req checks for SCCM"
-        #Run prereq checks
-        & "$InstallerLocation$infolderlocation/prereqchk.exe" "/LOCAL"
-        if($LastExitCode -ne 0){
-            Write-Host "prereqchk.exe failed!"
-            Exit-PSSession
-        }
-
+    $infolderlocation = "\SMSSETUP\BIN\X64\"
+    $session = Check-Creds -Credential $Credential -Computer $Computer -CredSSP $true
+    Copy-Item -Path $UnattendedFile -Destination C:\Unattended.ini -ToSession $session 
+    Invoke-Command -Session $session -Args $SCCMLocation, $infolderlocation, $ADKLocation,$DotNetLocation -Scriptblock{
+        param([String]$SCCMLocation, [String]$infolderlocation, [String]$ADKLocation, [String]$DotNetLocation)
+        Write-Host "Installing .NET 3.5"
+        Install-WindowsFeature -Name "net-framework-core" -source "$DotNetLocation\dotnetfx35.exe"
+        Write-Host "Installing ADK"
+        & "$ADKLocation/adksetup.exe" "/quiet" "/installpath" "C:\adk"
         Write-Host "Installing SCCM Config Manager..."
-        & "$InstallerLocation$infolderlocation/setup.exe" "/script" "c:\UnattendedFile.ini"
+        & "$SCCMLocation$infolderlocation\setup.exe" "/script" "c:\UnattendedFile.ini"
         if($LastExitCode -ne 0){
             Write-Host "setup.exe failed!"
             Exit-PSSession
@@ -118,6 +121,7 @@ Function New-SCCMCfgServer{
 }
 
 Function New-MSSQLServer{
+    #needs Domain Admin permissions
     param(
         [parameter(Mandatory=$true)]
         [String]$Computer,
@@ -130,11 +134,16 @@ Function New-MSSQLServer{
         [String]$InstanceID
         )
     $ErrorActionPreference = "Stop"
-    $session = Check-Creds -Credential $Credential
+    $session = Check-Creds -Credential $Credential -CredSSP $true
     $agtsvcaccount = Read-Host "Enter account for SQL Server Agent Service"
     $agtsvcaccount = Read-Host "Enter password for SQL Server Agent Service account" -AsSecureString
     $sqlsvcaccount = Read-Host "Enter account for SQL Server Service (Can Be Domain\User)"
     $sqlsvcpassword = Read-Host "Enter SQL Server Agent Service Account password" -AsSecureString
+    Invoke-Command -Session $Session -Args -ScriptBlock{
+
+    }
+    #Add service principle name for remote SQL Server
+    & "setspn.exe" "-S" "MSSQLSvc/$Computer"":1433"
 
 
 
