@@ -1,5 +1,22 @@
 #Configure configmgr intergration
-Function Check-Creds{
+Function New-Cred{
+    <#
+    .SYNOPSIS
+    This Is a helper function that returns a PSSession from the data passed to it.
+    .DESCRIPTION
+    The function supports implicict winrm (withn your logged in account), explicit, and CredSSP Authentication
+    .EXAMPLE
+    Implicit Session: New-Cred -Computer Domaincomp
+    Explicit Session: New-Cred -Credential "User" -Computer Domaincomp
+    CredSSP Session: New-Cred -Credential "User" -Computer Domaincomp -CredSSP $true
+    .Notes
+    CredSSP must be enabled through a GPO or other means on the machines you are trying to connect to (See link section).
+    CredSSP always needs explicit credentials, it passes the credentials directly to the machine you initiate a session with.
+    This solves the Kerberos double hop issue (Accessing an smb share through the remoted into machine for example)
+    .Link
+    CredSSP GPO: https://msdn.microsoft.com/en-us/library/windows/desktop/bb204773(v=vs.85).aspx
+    CredSSP Manual: https://blogs.technet.microsoft.com/heyscriptingguy/2012/11/14/enable-powershell-second-hop-functionality-with-credssp/
+    #>
     param([String]$Credential, [String]$Computer, [bool]$CredSSP)
     if($Credential -eq "none"){
         $session = New-PSSession -ComputerName $Computer
@@ -17,6 +34,21 @@ Function Check-Creds{
 }
 
 Function New-WSUSServer{
+    <#
+    .SYNOPSIS
+    New-WSUSServer deploys the WSUS server role to the targeted computer and does the initial sync
+    .DESCRIPTION
+    This cmdlet handles all options you would ever want from a base WSUS Install.
+    .Example
+    Basic: New-WSUSServer -Computer Domaincomp -ContentDir "C:\WSUSdata"
+    Language Specification: New-WSUSServer -Computer Domaincomp -ContentDir "C:\WSUSdata" -UpdateLanguages "ru"
+    SQL Server: New-WSUSServer -Computer Domaincomp -ContentDir "C:\WSUSdata" -SQLServer SQL001
+    Upstream WSUS server: New-WSUSServer -Computer Domaincomp -ContentDir "C:\WSUSdata" -UpstreamWSUS WSUS001
+    .NOTES
+    Default language is set to english
+    UpstreamWSUS is set to false by default, but will force SSL if used
+
+    #>
     param(
         [parameter(Mandatory=$true)]
         [String]$Computer,
@@ -30,7 +62,7 @@ Function New-WSUSServer{
     $ErrorActionPreference = "Stop"
     #Check to make sure user did not enter both sqlserver and contendir
 
-    $session = Check-Creds -Credential $Credential -Computer $Computer 
+    $session = New-Cred -Credential $Credential -Computer $Computer 
     Invoke-Command -Session $session -Args $SQLServer, $ContentDir, $UpstreamWSUS, $UpdateLanguages -ScriptBlock {
         param([String]$SQLServer,[String]$ContentDir, [String]$UpstreamWSUS,[String[]]$UpdateLanguages)
         if((Test-Path -Path "$ContentDir") -eq $false){
@@ -83,6 +115,16 @@ Function New-WSUSServer{
 }
 
 Function New-SCCMCfgServer{
+    <#
+    .SYNOPSIS
+    New-SCCMCfgServer configures the targeted server as an SCCM Config Manager server
+    .DESCRIPTION
+    Installs all prerequisites for SCCM Configuration Manager and installs it
+    .EXAMPLE
+    Base: New-SCCMCCfgServer -Computer domaincomp -UnattendedFile C:\unattended.ini -SCCMLocation \\fileshare\SCCM -ADKLocation \\fileshare\ADK -DotNetLocation \\fileshare\dotnet
+
+
+    #>
     param(
         [String]$Credential = "none",
         [parameter(Mandatory=$true)]
@@ -99,20 +141,31 @@ Function New-SCCMCfgServer{
 
     $ErrorActionPreference= "Stop"
     $infolderlocation = "\SMSSETUP\BIN\X64\"
-    $session = Check-Creds -Credential $Credential -Computer $Computer -CredSSP $true
+    $session = New-Cred -Credential $Credential -Computer $Computer -CredSSP $true
     Copy-Item -Path $UnattendedFile -Destination C:\Unattended.ini -ToSession $session 
     Invoke-Command -Session $session -Args $SCCMLocation, $infolderlocation, $ADKLocation,$DotNetLocation -Scriptblock{
         param([String]$SCCMLocation, [String]$infolderlocation, [String]$ADKLocation, [String]$DotNetLocation)
         Write-Host "Installing .NET 3.5"
         Install-WindowsFeature -Name "net-framework-core" -source "$DotNetLocation\dotnetfx35.exe"
-        Write-Host "Installing ADK"
-        & "$ADKLocation/adksetup.exe" "/quiet" "/installpath" "C:\adk"
-        Write-Host "Installing SCCM Config Manager..."
-        & "$SCCMLocation$infolderlocation\setup.exe" "/script" "c:\UnattendedFile.ini"
-        if($LastExitCode -ne 0){
+        $installed = Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName
+        if($installed -like "*Assesment and Deployment Toolkit*" ){
+            Write-Host "Installing ADK"
+            & "$ADKLocation/adksetup.exe" "/quiet" "/installpath" "C:\adk"
+            if($LastExitCode -ne 0){
             Write-Host "setup.exe failed!"
-            Exit-PSSession
+            Exit
+            }
         }
+       
+        if($installed -like "*System Center Configuration*"){
+            Write-Host "Installing SCCM Config Manager..."
+            & "$SCCMLocation$infolderlocation\setup.exe" "/script" "c:\UnattendedFile.ini"
+            if($LastExitCode -ne 0){
+                Write-Host "setup.exe failed!"
+                Exit
+            } 
+        }
+       
         
         Remove-Item -Path c:\UnattendedFile.ini | Out-Null
         Write-Host "Done!"
@@ -134,7 +187,7 @@ Function New-MSSQLServer{
         [String]$InstanceID
         )
     $ErrorActionPreference = "Stop"
-    $session = Check-Creds -Credential $Credential -CredSSP $true
+    $session = New-Cred -Credential $Credential -CredSSP $true
     $agtsvcaccount = Read-Host "Enter account for SQL Server Agent Service"
     $agtsvcaccount = Read-Host "Enter password for SQL Server Agent Service account" -AsSecureString
     $sqlsvcaccount = Read-Host "Enter account for SQL Server Service (Can Be Domain\User)"
@@ -150,6 +203,17 @@ Function New-MSSQLServer{
 }
 
 Function Add-WinServer{
+    <#
+    .SYNOPSIS
+    Adds a windows server to the domain
+    .DESCRIPTION
+    Used to add a windows server to the domain and put in a specific OU/CN
+    .EXAMPLE
+    Base: Add-WinServer -Credential "Administrator" -HostName newcomputername -Computer 192.168.1.2 -OU "ou=test servers, dc=ncc,dc=commnet,dc=edu" -DomainJoinCred (Get-Credential "admin@domain.domain")
+    Specify Domain: Add-WinServer -Credential "Administrator" -Domain domain.domain -HostName newcomputername -Computer 192.168.1.2 -OU "ou=test servers, dc=ncc,dc=commnet,dc=edu" -DomainJoinCred (Get-Credential "admin@domain.domain")
+    .NOTES
+    Domain defaults to ncc.commnet.edu when not specified 
+    #>
     param(
         [parameter(Mandatory=$true)]
         $HostName,
@@ -164,7 +228,7 @@ Function Add-WinServer{
         [PSCredential]$DomainJoinCred
         )
     $ErrorActionPreference = "Stop"
-    $session = Check-Creds -Credential $Credential -Computer $Computer
+    $session = New-Cred -Credential $Credential -Computer $Computer
 
     Invoke-Command -Session $session -Args $HostName, $Computer, $DomainJoinCred, $OU -ScriptBlock{
         param([String]$HostName, [PSCredential]$DomainJoinCred, [String]$OU)
