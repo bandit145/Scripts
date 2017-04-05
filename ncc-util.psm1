@@ -182,7 +182,7 @@ Function New-MSSQLServer{
         [String]$Features = @("SQL"),
         [parameter(Mandatory=$true)]
         [String]$InstallerLocation,
-        [parameter]$SQlSysadminAccnts = @("Administrator"),
+        [parameter]$SQLSysadminAccnts = @("Administrator"),
         [parameter(Mandatory=$true)]
         [String]$InstanceID
         )
@@ -196,7 +196,7 @@ Function New-MSSQLServer{
 
     }
     #Add service principle name for remote SQL Server
-    & "setspn.exe" "-S" "MSSQLSvc/$Computer"":1433"
+    & "setspn.exe" "-S" "MSSQLSvc/$Computer':1433'"
 
 
 
