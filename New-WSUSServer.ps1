@@ -1,17 +1,17 @@
 param(
     [parameter(Mandatory=$true)]
     [String]$Computer,
-    [String]$Credential = "none",
-    [String]$SQLServer = "no",
+    [String]$Credential = $false,
+    [String]$SQLServer = $false,
     [parameter(Mandatory=$true)]
     [String]$ContentDir,
-    [String]$UpstreamWSUS = "no",
+    [String]$UpstreamWSUS = $false,
     [String[]]$UpdateLanguages= @("en")
     )
 $ErrorActionPreference = "Stop"
 Function Check-Creds{
     param([String]$Credential, [String]$Computer)
-    if($Credential -eq "none"){
+    if(!$Credential){
         $session = New-PSSession -ComputerName $Computer
     }
     else{
@@ -29,7 +29,7 @@ Invoke-Command -Session $session -Args $SQLServer, $ContentDir, $UpstreamWSUS, $
     if((Test-Path -Path "$ContentDir") -eq $false){
       New-Item -ItemType directory -Path "$ContentDir" | Out-Null 
     }
-    if($SQLServer -eq "no"){
+    if(!$SQLServer){
         Write-Host "Wid install..."
         Install-WindowsFeature -Name UpdateServices -IncludeManagementTools | Out-Null
         #& is the call operator
@@ -38,13 +38,13 @@ Invoke-Command -Session $session -Args $SQLServer, $ContentDir, $UpstreamWSUS, $
         #Args a seperated by spacing
         &"C:\Program Files\Update Services\Tools\wsusutil.exe" "postinstall" "CONTENT_DIR=$ContentDir"
     }
-    elseif($SQLServer -ne "no"){
+    else($SQLServer){
         Write-Host "SQL server install..."
         Install-WindowsFeature -Name UpdateServices-Services,UpdateServices-DB -IncludeManagementTools | Out-Null
         &"C:\Program Files\Update Services\Tools\wsusutil.exe" "postinstall" "SQL_INSTANCE_NAME=$SQLServer CONTENT_DIR=$ContentDir"
     }
 
-    if($UpstreamWSUS -eq "no"){
+    if(!$UpstreamWSUS){
         Set-WsusServerSynchronization -SyncFromMU
     }
     else{
