@@ -30,6 +30,8 @@ Function New-HostTest{
 
     param(
         [parameter(Mandatory=$true)]
+        [String]$VMCount,
+        [parameter(Mandatory=$true)]
         [String]$VMHost,
         [parameter(Mandatory=$true)]
         [String]$DataCenter,
@@ -51,8 +53,9 @@ Function New-HostTest{
     try{
         $count = 0
         #stuff host full of vms
-        while($true){
-            New-VM -VMHost $VMHost -Name -join("TestVM",$count) -Template $Template -RunAsync
+        while($count -le $VMCount ){
+            New-VM -VMHost $VMHost -Name -join("TestVM",$count) -Template $Template | Out-Null
+            Start-VM -VM -join("TestVM",$count) | Out-Null
             $count +=1
         }
     }
@@ -86,6 +89,7 @@ Function Stop-HostTest{
     foreach($vm in (Get-VM)){
         if($vm.VMHost -eq $VMHost){
             #-Confirm for testing
+            Stop-VM -VM $vm -WhatIf
             Remove-VM -VM $vm -DeletePermanently -WhatIf
         }
     }
