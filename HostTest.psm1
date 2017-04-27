@@ -50,18 +50,14 @@ Function New-HostTest{
         New-Cluster -Name $ClusterName -Location $Datacenter
     }
     Move-Host -VMHost $VMHost -ClusterName $ClusterName
-    try{
-        $count = 0
-        #stuff host full of vms
-        while($count -le $VMCount ){
-            New-VM -VMHost $VMHost -Name -join("TestVM",$count) -Template $Template | Out-Null
-            Start-VM -VM -join("TestVM",$count) | Out-Null
-            $count +=1
-        }
+    $count = 0
+    #stuff host full of vms
+    while($count -le $VMCount ){
+        New-VM -VMHost $VMHost -Name -join("TestVM",$count) -Template $Template | Out-Null
+        Start-VM -VM -join("TestVM",$count) | Out-Null
+        $count +=1
     }
-    catch{
-        Write-Host "$VMHost VM stuffing completed!"
-    }
+    Write-Host "$VMHost VM stuffing completed!"
     Disconnect-VIServer -Force
 }
 
