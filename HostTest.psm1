@@ -53,8 +53,8 @@ Function New-HostTest{
     $count = 0
     #stuff host full of vms
     while($count -le $VMCount ){
-        New-VM -VMHost $VMHost -Name -join("TestVM",$count) -Template $Template | Out-Null
-        Start-VM -VM -join("TestVM",$count) | Out-Null
+        New-VM -VMHost $VMHost -Name (-join("TestVM",$count)) -Template $Template | Out-Null
+        Start-VM -VM (-join("TestVM",$count)) | Out-Null
         $count +=1
     }
     Write-Host "$VMHost VM stuffing completed!"
