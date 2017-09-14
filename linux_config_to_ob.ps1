@@ -13,7 +13,7 @@ Begin{
     $file_input = Get-Content $File  | Where-Object {!($_ -match "^#")}  
     foreach($line in $file_input){
         if($line.Length -gt 1){
-            $key, $value = $line.Split(" ")
+            $key, $value = $line.Split()
             #this will only work if the same keys are right under each other
             if($ConfigObj.$key -and $ConfigObj.$key.GetType() -ne [System.Array]){
                 $ConfigObj.$key = @($ConfigObj.$key)
